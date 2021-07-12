@@ -1,3 +1,4 @@
+#!/usr/bin/env python2.7
 
 # python had trouble for some reason, can't remember why, so did it in Java instead
 
