@@ -63,35 +63,15 @@
 
 # -----------------------------------------------------------------------------------------
 
+
+# from functools import reduce      # do we need this?
 import math
+import operator
 import fractions
 import itertools
 
-def solution(w, h, s):
-
-    total = 0 
-
-    for col_coeff, col_cycle in concatenate(partition(w)):
-        for row_coeff, row_cycle in concatenate(partition(h)):
-
-            combined = []
-
-            for len_a, freq_a in col_cycle:
-                for len_b, freq_b in row_cycle:
-
-                    combined.append((len_a * len_b // fractions.gcd(len_a, len_b) , freq_a * freq_b * fractions.gcd(len_a , len_b)))
-
-            value = 1
-            combined = [sum(p[1] for p in combined)]
-
-            for power in combined:
-                value *= s ** power
-                total += col_coeff * row_coeff * value
-
-    return str(int(total)) 
-
-# copy and paste from 'https://jeromekelleher.net/generating-integer-partitions.html' (there is a partition python module, but not in python 2.7)
-# given a number, return all the different ways you can partition (split) that number, e.g. 3 -> [1+1+1, 1+2, 3]
+# reference: https://jeromekelleher.net/generating-integer-partitions.html (there is a partition python module, but not in python 2.7)
+# given a number, return all the different ways you can partition (split) that number, e.g. 3 -> [1+1+1,  1+2,3]
 def partitionNumber(n):
     a = [0 for i in range(n + 1)]
     k = 1
@@ -117,46 +97,128 @@ def partitionNumber(n):
 # inside the for loop below, the '[list(y) ... ] 'expression sort ints inside 'p' (the partition of the number) into their own lists so we can remove duplicates using set() - print the variables if still confused
 # inside the 'yield' part, using a set to get unique values (i.e. remove duplicates), convert it to a list, then use [0] to return the int (we can do this because there is only ever going to be 1 element in the list due to set removing duplicates)
 def formatPartition(p):
-    for x in [list(y) for x, y in itertools.groupby(p)]:
-        yield (list(set(x))[0], len(x))
+    return [(list(set(x))[0], len(x)) for x in [list(y) for x, y in itertools.groupby(p)]]
 
 # by using 'partitionNumber' to partition a given number, we then format each 'partition' element into: ( <length> , <number> ) - this is what 'formatPartition()' does
 # e.g. 3 -> [1+1+1, 1+2, 3] then -> [3, 1] (three 1s), [1, 1] [1, 2] (one 1 and one 2), [1, 3] (one 3)
 def partition(n):
-    for par in partitionNumber(n):
-        yield list(formatPartition(par))
+    return [list(formatPartition(par)) for par in partitionNumber(n)]
 
-# leo fraction code
+# product function used for 'frac'
+def prod(iterable):
+    return reduce(operator.mul, iterable, 1)
+
+# finding fraction coefficient
 def frac(list_tuple):
-    for tup in list_tuple:
-        val = 1 * math.factorial(tup[1]) * ( tup[0] ** tup[1])
-    return fractions.Fraction(1, val) 
+    return fractions.Fraction(1, prod([math.factorial(tup[1]) * (tup[0] ** tup[1]) for tup in list_tuple]))  
 
 # final concatenation [ <fraction>, <partition> ]
+# e.g. [(Fraction(1, 24), [(1, 4)]), ... ]
 def concatenate(partitionList):
     return [(frac(p), p) for p in partitionList]
 
+# create cycle index
+def cycle_index(n):
+    return concatenate(partition(n))
+
+# unreadable one liner
+def createProdIndex(monom1, monom2):
+    return [sum(p[1] for p in [(sub1 * sub2 // fractions.gcd(sub1, sub2) , sup1 * sup2 * fractions.gcd(sub1 , sub2)) for sub1, sup1 in monom1 for sub2, sup2 in monom2])][0]
+
+# another unreadable one liner
+def solution(w, h, s):
+    return str(sum([coeff1 * coeff2 * (s ** createProdIndex(monom1, monom2)) for coeff1, monom1 in cycle_index(w) for coeff2, monom2 in cycle_index(h)]))
 
 # print(concatenate(partition(4)))
 
-
-
-
 print(solution(2, 2, 2))        # should return 7
-print(solution(2, 3, 4))        # should return 430
+# print(solution(2, 3, 4))        # should return 430
+# print(solution(5, 5, 3))        # should return 64796982
+# print(solution(20, 20, 20))     # should return 4362636532842096060384943807744636125276397960499827368129084188447932018978056642477757458957608927359934657503098196804450318141141777881011615585512957407760163943909711433512752447285147752964634227190809004820890439784029740040762393940714469208411020089723197537701566510883455745253715100731646069527339605771869192201854698546299608913490394400810614096581276817661724939338918115013630804102540735299259439242860527025876886776519058749670961452511463618715531904197385737000 (pretty big number)
 
+# ---------------------------------------------------------------
 
+# our sympy solution below, however python 2.7 does not support sympy, therefore we resorted to using code above
 
+# from sympy import symbols
+# from fractions import Fraction
 
-
-
-
-
-
+# def indexpoly(n):
+#     return sympy.simplify(sum([Fraction(1, n) * sympy.Function('s')(k) * indexpoly(n-k) for k in range(1, n+1)])) if n != 0 else 1
 
 # helpful sources:
-# https://stackoverflow.com/questions/48360864/nested-generators-and-yield-from     -->     regarding nested yields
-# https://stackoverflow.com/questions/773/how-do-i-use-itertools-groupby          -->     itertools.groupby (using this to group partitions)
+# https://stackoverflow.com/questions/48360864/nested-generators-and-yield-from     -->     nested yields
+# https://stackoverflow.com/questions/773/how-do-i-use-itertools-groupby            -->     itertools.groupby (using this to group partitions)
+# https://realpython.com/python-reduce-function/                                    -->     reduce function
+
+# ---------------------------------------------------------------
+
+# readable version of code
+
+# import math
+# import fractions
+# import itertools
+
+# def solution(w, h, s):
+#     total = 0 
+#     for col_coeff, col_cycle in concatenate(partition(w)):
+#         for row_coeff, row_cycle in concatenate(partition(h)):
+#             combined = []
+#             for len_a, freq_a in col_cycle:
+#                 for len_b, freq_b in row_cycle:
+#                     combined.append((len_a * len_b // fractions.gcd(len_a, len_b) , freq_a * freq_b * fractions.gcd(len_a , len_b)))
+#             value = 1
+#             combined = [sum(p[1] for p in combined)]
+#             for power in combined:
+#                 value *= s ** power
+#                 total += col_coeff * row_coeff * value
+#     return str(int(total)) 
+
+# # copy and paste from 'https://jeromekelleher.net/generating-integer-partitions.html' (there is a partition python module, but not in python 2.7)
+# # given a number, return all the different ways you can partition (split) that number, e.g. 3 -> [1+1+1, 1+2, 3]
+# def partitionNumber(n):
+#     a = [0 for i in range(n + 1)]
+#     k = 1
+#     y = n - 1
+#     while k != 0:
+#         x = a[k - 1] + 1
+#         k -= 1
+#         while 2 * x <= y:
+#             a[k] = x
+#             y -= x
+#             k += 1
+#         l = k + 1
+#         while x <= y:
+#             a[k] = x
+#             a[l] = y
+#             yield a[:k + 2]
+#             x += 1
+#             y -= 1
+#         a[k] = x + y
+#         y = x + y - 1
+#         yield a[:k + 1]
+
+# # inside the for loop below, the '[list(y) ... ] 'expression sort ints inside 'p' (the partition of the number) into their own lists so we can remove duplicates using set() - print the variables if still confused
+# # inside the 'yield' part, using a set to get unique values (i.e. remove duplicates), convert it to a list, then use [0] to return the int (we can do this because there is only ever going to be 1 element in the list due to set removing duplicates)
+# def formatPartition(p):
+#     for x in [list(y) for x, y in itertools.groupby(p)]:
+#         yield (list(set(x))[0], len(x))
+
+# # by using 'partitionNumber' to partition a given number, we then format each 'partition' element into: ( <length> , <number> ) - this is what 'formatPartition()' does
+# # e.g. 3 -> [1+1+1, 1+2, 3] then -> [3, 1] (three 1s), [1, 1] [1, 2] (one 1 and one 2), [1, 3] (one 3)
+# def partition(n):
+#     for par in partitionNumber(n):
+#         yield list(formatPartition(par))
+
+# def frac(list_tuple):
+#     val = 1
+#     for tup in list_tuple:
+#         val = val * math.factorial(tup[1]) * ( tup[0] ** tup[1])
+#     return fractions.Fraction(1, val) 
+
+# # final concatenation [ <fraction>, <partition> ]
+# def concatenate(partitionList):
+#     return [(frac(p), p) for p in partitionList]
 
 # ---------------------------------------------------------------
 
@@ -178,7 +240,7 @@ print(solution(2, 3, 4))        # should return 430
 
 # ---------------------------------------------------------------
 
-# naive method but wasting too much time so gave up
+# naive method but wasting too much time so gave up lol
 # in the 2x2 example, this works except it doesn't sort the diagonal / row / col cases, accounts for all, see miro for more details
 
 # def equivalentMatrices(m):
